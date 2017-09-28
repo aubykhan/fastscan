@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.content.FileProvider;
 import android.support.v7.app.AlertDialog;
@@ -106,7 +107,7 @@ public class MainActivity extends AppCompatActivity {
         call.enqueue(new Callback<ApiResponse>() {
 
             @Override
-            public void onResponse(Call<ApiResponse> call, Response<ApiResponse> response) {
+            public void onResponse(@NonNull Call<ApiResponse> call, @NonNull Response<ApiResponse> response) {
                 AlertDialog.Builder alertBuilder = new AlertDialog.Builder(MainActivity.this);
                 if (response.isSuccessful()) {
                     if (response.body().getIsIdentical()) {
@@ -123,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onFailure(Call<ApiResponse> call, Throwable t) {
+            public void onFailure(@NonNull Call<ApiResponse> call, @NonNull Throwable t) {
                 AlertDialog.Builder alertBuilder = new AlertDialog.Builder(MainActivity.this);
                 alertBuilder.setMessage("Request failed with error. " + t.getMessage());
                 alertBuilder.show();
@@ -174,7 +175,7 @@ public class MainActivity extends AppCompatActivity {
             try {
                 photoFile = createImageFile(captureType);
             } catch (IOException ex) {
-
+                ex.printStackTrace();
             }
             // Continue only if the File was successfully created
             if (photoFile != null) {
