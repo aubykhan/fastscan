@@ -3,7 +3,9 @@
     package="com.aubykhan.fastscan">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="18"/>
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="18" />
 
     <uses-feature
         android:name="android.hardware.camera"
@@ -16,14 +18,16 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".MainActivity">
+        <activity android:name=".MainActivity"
+            android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".ScanActivity"></activity>
+        <activity android:name=".ScanActivity" />
+
         <provider
             android:name="android.support.v4.content.FileProvider"
             android:authorities="com.aubykhan.fastscan"
@@ -31,8 +35,16 @@
             android:grantUriPermissions="true">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths"></meta-data>
+                android:resource="@xml/file_paths" />
         </provider>
+
+        <activity android:name=".MenuActivity" />
+        <activity android:name=".BasicScanActivity">
+
+        </activity>
+        <activity android:name=".StartActivity">
+
+        </activity>
     </application>
 
 </manifest>

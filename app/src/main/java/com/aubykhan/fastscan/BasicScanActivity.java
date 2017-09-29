@@ -1,6 +1,5 @@
 package com.aubykhan.fastscan;
 
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -15,14 +14,11 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
 import android.widget.ImageView;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
@@ -38,43 +34,110 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
-public class MainActivity extends AppCompatActivity {
+public class BasicScanActivity extends AppCompatActivity {
     static final int REQUEST_SELFIE_CAPTURE = 1;
     static final int REQUEST_ID_CAPTURE = 2;
+
+    private ImageView idImage;
+    private ImageView selfieImage;
 
     private String mIdFilePath;
     private String mSelfieFilePath;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_basic_scan);
+        selfieImage = (ImageView) findViewById(R.id.selfieImage);
+        idImage = (ImageView) findViewById(R.id.idImage);
 
-        Button button = (Button)findViewById(R.id.startButton);
+        FloatingActionButton button = (FloatingActionButton) findViewById(R.id.scanButton);
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                startCaptureStep(
-                    "Step 1",
-                    "You'll be redirected to camera preview. Please make sure that your CNIC is properly visible on the screen.",
-                    REQUEST_ID_CAPTURE
-                );
+                uploadImages();
+            }
+        });
+
+        selfieImage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dispatchTakePictureIntent(REQUEST_SELFIE_CAPTURE);
+            }
+        });
+
+        idImage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dispatchTakePictureIntent(REQUEST_ID_CAPTURE);
             }
         });
     }
 
-    private void startCaptureStep(String dialogTitle, String dialogMessage, final int requestType) {
-        final AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+    private void uploadImages() {
+        String API_BASE_URL = "http://faceoffdemoapi.azurewebsites.net/api/";
 
-        builder.setTitle(dialogTitle)
-                .setMessage(dialogMessage)
-                .setPositiveButton("Proceed", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        dispatchTakePictureIntent(requestType);
+        OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
+
+        Retrofit.Builder builder =
+                new Retrofit.Builder()
+                        .baseUrl(API_BASE_URL)
+                        .addConverterFactory(
+                                GsonConverterFactory.create()
+                        );
+
+        Retrofit retrofit =
+                builder
+                        .client(
+                                httpClient.build()
+                        )
+                        .build();
+
+        ApiClient client = retrofit.create(ApiClient.class);
+
+        Log.d("Info", "Uploading files...");
+        Call<ApiResponse> call =
+                client.uploadForRecognition(Arrays.asList(createPart(mIdFilePath), createPart(mSelfieFilePath)));
+
+        // Execute the call asynchronously. Get a positive or negative callback.
+        call.enqueue(new Callback<ApiResponse>() {
+
+            @Override
+            public void onResponse(@NonNull Call<ApiResponse> call, @NonNull Response<ApiResponse> response) {
+                AlertDialog.Builder alertBuilder = new AlertDialog.Builder(getApplicationContext());
+                if (response.isSuccessful()) {
+                    if (response.body().getIsIdentical()) {
+                        alertBuilder.setMessage("The profile is matched with confidence " + response.body().getConfidence());
+                    } else {
+                        alertBuilder.setMessage("The profile is not matched. " + response.message());
                     }
-                })
-                .show();
+                } else {
+                    alertBuilder.setMessage("Unable to process the request. " + response.message());
+                    Log.d("Request", call.request().toString());
+                    Log.d("Response", response.toString());
+                }
+                alertBuilder.show();
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<ApiResponse> call, @NonNull Throwable t) {
+                AlertDialog.Builder alertBuilder = new AlertDialog.Builder(getApplicationContext());
+                alertBuilder.setMessage("Request failed with error. " + t.getMessage());
+                alertBuilder.show();
+            }
+        });
+    }
+
+    private MultipartBody.Part createPart(String path) {
+        File file = new File(path);
+
+        Bitmap bmp = BitmapFactory.decodeFile(path);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        bmp.compress(Bitmap.CompressFormat.JPEG, 70, bos);
+
+        RequestBody body = RequestBody.create(MediaType.parse("image/jpeg"), bos.toByteArray());
+        return MultipartBody.Part.createFormData("files", file.getName(), body);
     }
 
     private File createImageFile(int captureType) throws IOException {
@@ -126,22 +189,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_SELFIE_CAPTURE && resultCode == RESULT_OK) {
-            startUploadActivity();
+            selfieImage.setImageBitmap(getBitmap(data));
         } else if (requestCode == REQUEST_ID_CAPTURE && resultCode == RESULT_OK) {
-            startCaptureStep(
-                "Step 2",
-                "Great! Now, take a selfie.",
-                REQUEST_SELFIE_CAPTURE
-            );
+            idImage.setImageBitmap(getBitmap(data));
         }
-    }
-
-    private void startUploadActivity() {
-        Intent intent = new Intent(getApplicationContext(), ScanActivity.class);
-        intent.putExtra("id_path", mIdFilePath);
-        intent.putExtra("selfie_path", mSelfieFilePath);
-
-        startActivity(intent);
     }
 
     private Bitmap getBitmap(Intent data) {
